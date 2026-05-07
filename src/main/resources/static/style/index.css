@@ -1,0 +1,26 @@
+tr{
+    margin: 0;
+    padding-bottom: 4px;
+    padding-top: 4px;
+}
+td{
+    margin-right: 10px;
+    max-height: min-content;
+}
+.icon{
+    width: 23px;
+    vertical-align: center;
+}
+td > a {
+    margin-left: 2px;
+}
+
+span > span {
+    color: #c7c7c7;
+}
+a > span, span > span {
+    margin-left: 10px;
+}
+a:hover {
+    color: #ffffff;
+}
