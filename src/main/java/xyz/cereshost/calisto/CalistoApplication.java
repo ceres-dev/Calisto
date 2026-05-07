@@ -19,10 +19,13 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.WeakHashMap;
 import java.util.zip.ZipOutputStream;
 
 @Controller
@@ -73,44 +76,43 @@ public class CalistoApplication {
 
     private static @NotNull StringBuilder getExplorerList(@NotNull List<File> files, @NotNull Path path) throws IOException {
         StringBuilder builderFiles = new StringBuilder();
-        if (!path.equals(ROOT)) builderFiles.append(buildRow(false, true, pathToName(path.getParent().toFile().toPath()), ".."));
+        if (!path.equals(ROOT)) builderFiles.append(buildRow(true, path.getParent().toFile()));
         for (File fil : files) {
-            if (fil.isDirectory()) {
-                builderFiles.append(buildRow(false, true, pathToName(fil.toPath()), fil.getName()));
-            }else {
-                if (isVisible(fil.toPath())){
-                    builderFiles.append(buildRow(true, true, pathToName(fil.toPath()), fil.getName()));
-                }else {
-                    builderFiles.append(buildRow(true, false, pathToName(fil.toPath()), fil.getName()));
-                }
-            }
+            builderFiles.append(buildRow(false, fil));
         }
         return builderFiles;
     }
 
-    private static @NotNull String buildRow(boolean isFile, boolean isVisible, String pathName, String displayName) {
-        final String row = "<tr><td>%s</td><td>%s</td></tr>";
+    private static final WeakHashMap<Path, Long> sizeFiles = new WeakHashMap<>();
 
+    private static @NotNull String buildRow(boolean isParent, File file) throws IOException {
+        final String row = "<tr><td>%s</td><td>%s</td><td><small>%s</small></td></tr>";
+        String pathName = pathToName(file.toPath());
+        String displayName = isParent ? ".." : file.getName();
         String first;
-        if (isVisible) {
-            if (isFile) {
+
+        if (file.isDirectory()) {
+            first = "<a href=?file=%s><img class=icon src=\"icons/%2$s.svg\" alt=\"%s\"><span>%s</span></a>"
+                    .formatted( pathName, "folder", displayName);
+        } else {
+            if (isVisible(file.toPath())) {
                 first = "<a href=/view?file=%s><img class=icon src=\"icons/%2$s.svg\" alt=\"%s\"><span>%s</span></a>"
                         .formatted(pathName, "file", displayName);
-            }else {
-                first = "<a href=?file=%s><img class=icon src=\"icons/%2$s.svg\" alt=\"%s\"><span>%s</span></a>"
-                        .formatted( pathName, "folder", displayName);
-            }
-        }else {
-            first = "<span><img class=icon src=\"icons/%1$s.svg\" alt=\"%s\"><span>%s</span></span>"
-                    .formatted(isFile ? "file" : "folder", displayName);
-        }
-        String second = "<a href=\"/download?file=%s\"</a><img class=icon src=\"icons/download.svg\" alt=descargar>".formatted(pathName);
 
-        return row.formatted(first, second);
+            }else {
+                first = "<span><img class=icon src=\"icons/%1$s.svg\" alt=\"%s\"><span>%s</span></span>"
+                        .formatted("file", displayName);
+            }
+
+        }
+        String second = "<a href=\"/download?file=%s\"</a><img class=\"icon iconDownload\" src=\"icons/download.svg\" alt=descargar>".formatted(pathName);
+        String threed = "<span>%s</span>".formatted(Utils.formatSize(sizeFiles.computeIfAbsent(file.toPath().normalize().toAbsolutePath(), (f) -> Utils.getFolderSize(f.toFile()))));
+
+        return row.formatted(first, second, threed);
     }
 
     private static @NotNull String pathToName(@NotNull Path path) {
-        String name = (path.startsWith(".") ? path.toString().substring(1) : path).toString().replace(ROOT.toString(), "").replace("\\", "/");;
+        String name = (path.startsWith(".") ? path.toString().substring(1) : path).toString().replace(ROOT.toString(), "").replace("\\", "/");
         if (name.isEmpty()) {
             return "/";
         } else {

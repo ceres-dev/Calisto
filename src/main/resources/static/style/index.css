@@ -10,16 +10,14 @@ td{
 .icon{
     width: 23px;
     vertical-align: center;
+    margin-right: 10px;
 }
-td > a {
-    margin-left: 2px;
+.iconDownload{
+    margin-right: 0;
 }
 
 span > span {
     color: #c7c7c7;
-}
-a > span, span > span {
-    margin-left: 10px;
 }
 a:hover {
     color: #ffffff;
