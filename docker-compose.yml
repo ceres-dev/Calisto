@@ -1,0 +1,12 @@
+services:
+  calisto:
+    build: .
+    container_name: calisto
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ./public:./public
+
+    restart: unless-stopped

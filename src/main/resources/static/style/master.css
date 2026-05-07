@@ -2,22 +2,21 @@ body {
     background: #25292d;
     font-family: 'sans-serif', 'Helvetica', 'Arial', sans-serif;
     color: #5570da;
-    font-size: 24px;
+    font-size: 20px;
     padding: 3vw;
-}
-a:visited {
-    color: #c7c7c7;
-}
-a {
-    color: #c7c7c7;
 }
 header, section {
     background: #18181a;
     max-width: max-content;
-    padding: 8px;
+    padding: 10px;
     border-radius: 10px;
+}
+header {
     margin-bottom: 10px;
 }
 small{
-    color: #4a577e
+    color: #576685
+}
+footer{
+    margin-top: 10px;
 }

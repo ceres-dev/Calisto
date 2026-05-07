@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -65,6 +66,62 @@ public class Utils {
         if (bytes < 1024) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         char pre = "KMGTPE".charAt(exp - 1);
-        return String.format("%.2f %sB", bytes / Math.pow(1024, exp), pre);
+        return String.format("%.2f%sB", bytes / Math.pow(1024, exp), pre);
+    }
+
+    private final Set<String> IMAGE_EXTENSIVE = Set.of(
+            "png", "jpg", "jpeg", "gif", "bmp", "svg"
+    );
+
+    private final Set<String> VIDEO_EXTENSIVE = Set.of(
+            "mp4", "mkv", "avi"
+    );
+
+    private final Set<String> AUDIO_EXTENSIVE = Set.of(
+            "mp3", "flv", "wav"
+    );
+
+    public boolean isMedia(Path path) {
+        File file = path.toFile();
+        if (file.exists() && file.isFile() ) {
+            String[] raw = file.getName().split("\\.");
+            String ext = raw[raw.length - 1].toLowerCase();
+            return IMAGE_EXTENSIVE.contains(ext) || VIDEO_EXTENSIVE.contains(ext) || AUDIO_EXTENSIVE.contains(ext);
+        }{
+            return false;
+        }
+    }
+
+    public @NotNull TypeMedia getTypeMedia(Path path) {
+        String[] raw = path.toFile().getName().split("\\.");
+        String ext = raw[raw.length - 1].toLowerCase();
+        if (IMAGE_EXTENSIVE.contains(ext)) {
+            return TypeMedia.IMAGE;
+        }
+        if (VIDEO_EXTENSIVE.contains(ext)) {
+            return TypeMedia.VIDEO;
+        }
+        if (AUDIO_EXTENSIVE.contains(ext)) {
+            return TypeMedia.AUDIO;
+        }
+        throw new IllegalArgumentException("Unknown extension: " + ext);
+    }
+
+    public enum TypeMedia{
+        IMAGE,
+        VIDEO,
+        AUDIO
+    }
+
+    public boolean checkPathForbidden(Path path) {
+        return !path.startsWith(CalistoApplication.ROOT);
+    }
+
+    public static boolean isVisible(Path path) throws IOException {
+        return Files.probeContentType(path) != null;
+    }
+
+    public static boolean isHiddenPath(Path path) {
+        return path.getFileName().toString().toLowerCase().startsWith(".");
     }
 }
