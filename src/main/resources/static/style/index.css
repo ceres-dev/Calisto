@@ -4,8 +4,6 @@ td{
 }
 .icon{
     width: 23px;
-    vertical-align: center;
-    margin-right: 10px;
 }
 .iconDownload{
     margin-right: 0;
@@ -43,10 +41,12 @@ span{
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
-    vertical-align: center;
+    vertical-align: bottom;
+    margin-left: 4px;
 }
 a {
     color: #c7c7c7;
+    display: inline-block;
 }
 a:visited {
     color: #c7c7c7;
@@ -54,9 +54,20 @@ a:visited {
 a:hover {
     color: #ffffff;
 }
+td > a{
+    width: 100%;
+}
 header > a{
     text-decoration: none;
 }
 td > span{
     color: #989898;
+}
+.git{
+    vertical-align: middle;
+    margin-left: 5px;
+}
+footer{
+    align-items: center;
+    display: flex;
 }

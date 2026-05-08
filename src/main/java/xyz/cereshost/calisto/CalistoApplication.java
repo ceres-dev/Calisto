@@ -79,7 +79,7 @@ public class CalistoApplication {
         String audio = "<audio loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%s\"></audio>";
 
         for (Path dir : dirs) {
-            String url = WEB + "/view?path=" + pathToName(dir);
+            String url = "/view?path=" + pathToName(dir);
             builderPath.append(switch (Utils.getTypeMedia(dir)){
                 case IMAGE -> html.formatted(url, img.formatted(url, dir.toFile().getName()));
                 case VIDEO -> html.formatted(url, video.formatted(url, dir.toFile().getName()));
@@ -92,12 +92,10 @@ public class CalistoApplication {
     private static @NonNull StringBuilder getExplorerPath(Path path) {
         StringBuilder builderPath = new StringBuilder();
         List<String> dirNames = Arrays.stream(pathToName(path).split("/")).toList();
-        builderPath.append("<a href=\"").append(WEB).append("?path=/\">.</a>");
-        if (dirNames.isEmpty()) {
-            builderPath.append("/");
-        }else {
-            for (int i = 0; i < dirNames.size(); i++) {
-                builderPath.append("<a href=\"").append(WEB).append("?path=")
+        builderPath.append("<a href=\"").append("?path=/\">.</a>/");
+        if (!dirNames.isEmpty()) {
+            for (int i = 1; i < dirNames.size(); i++) {
+                builderPath.append("<a href=\"").append("?path=")
                         .append(String.join("/", dirNames.subList(0, i +1)))
                         .append("\">").append(dirNames.get(i)).append("</a>").append("/");
             }
@@ -117,29 +115,30 @@ public class CalistoApplication {
     private static final WeakHashMap<Path, Long> sizeFiles = new WeakHashMap<>();
 
     private static @NotNull String buildRow(boolean isParent, File file) throws IOException {
-        final String row = "<tr><td>%s</td><td>%s</td><td><small>%s</small></td></tr>";
+        final String row = "<tr><td>%s</td><td>%s</td><td>%s</td><td><small>%s</small></td></tr>";
         String pathName = pathToName(file.toPath());
         String displayName = isParent ? ".." : file.getName();
         String name;
 
         if (file.isDirectory()) {
-            name = "<a href=\"?path=%s\"><span class=lightGray><img class=icon src=\"icons/%2$s.svg\" alt=\"%s\">%s</span></a>"
-                    .formatted(pathName, "folder", displayName);
+            name = "<a href=\"?path=%s\"><span>%s</span></a>"
+                    .formatted(pathName, displayName);
         } else {
             if (Utils.isVisible(file.toPath())) {
-                name = "<a href=\"/view?path=%s\"><span class=lightGray><img class=icon src=\"icons/%2$s.svg\" alt=\"%s\">%s</span></a>"
-                        .formatted(pathName, "file", displayName);
+                name = "<a href=\"/view?path=%s\"><span>%s</span></a>"
+                        .formatted(pathName, displayName);
 
             }else {
-                name = "<span class=lightGray><img class=icon src=\"icons/%1$s.svg\" alt=\"%s\">%s</span>"
-                        .formatted("file", displayName);
+                name = "<span>%s</span>"
+                        .formatted(displayName);
             }
 
         }
+        String type = "<img class=icon src=\"icons/%1$s.svg\" alt=\"%s\">".formatted(file.isDirectory() ? "folder" : "file");
         String download = "<a href=\"/download?path=%s\"</a><img class=\"icon iconDownload\" src=\"icons/download.svg\" alt=descargar>".formatted(pathName);
         String size = "<span>%s</span>".formatted(Utils.formatSize(sizeFiles.computeIfAbsent(file.toPath().normalize().toAbsolutePath(), (f) -> Utils.getFolderSize(f.toFile()))));
 
-        return row.formatted(download, name, size);
+        return row.formatted(download, type, name, size);
     }
 
     private static @NotNull String pathToName(@NotNull Path path) {
