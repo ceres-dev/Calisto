@@ -15,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.async.WebAsyncTask;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.File;
@@ -24,6 +25,9 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.Deflater;
 import java.util.zip.ZipOutputStream;
 
 @Controller
@@ -112,7 +116,7 @@ public class CalistoApplication {
         return builderFiles;
     }
 
-    private static final WeakHashMap<Path, Long> sizeFiles = new WeakHashMap<>();
+    private static final WeakHashMap<Path, Long> sizeCacheFiles = new WeakHashMap<>(32, 0.5f);
 
     private static @NotNull String buildRow(boolean isParent, File file) throws IOException {
         final String row = "<tr><td>%s</td><td>%s</td><td>%s</td><td><small>%s</small></td></tr>";
@@ -136,7 +140,7 @@ public class CalistoApplication {
         }
         String type = "<img class=icon src=\"icons/%1$s.svg\" alt=\"%s\">".formatted(file.isDirectory() ? "folder" : "file");
         String download = "<a href=\"/download?path=%s\"</a><img class=\"icon iconDownload\" src=\"icons/download.svg\" alt=descargar>".formatted(pathName);
-        String size = "<span>%s</span>".formatted(Utils.formatSize(sizeFiles.computeIfAbsent(file.toPath().normalize().toAbsolutePath(), (f) -> Utils.getFolderSize(f.toFile()))));
+        String size = "<span>%s</span>".formatted(Utils.formatSize(sizeCacheFiles.computeIfAbsent(file.toPath().normalize().toAbsolutePath(), (f) -> Utils.getFolderSize(f.toFile()))));
 
         return row.formatted(download, type, name, size);
     }
@@ -181,26 +185,24 @@ public class CalistoApplication {
     public ResponseEntity<StreamingResponseBody> download(@RequestParam(value = "path", defaultValue = "/") String pathName) {
         Path path = nametoPath(pathName).toAbsolutePath().normalize();
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
         if (Files.isDirectory(path)) {
             StreamingResponseBody stream = outputStream -> {
                 try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
+                    zipOut.setLevel(Deflater.DEFAULT_COMPRESSION);
                     Utils.zipFolder(path, path.getFileName().toString(), zipOut);
                 }
             };
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + path.getFileName() + ".zip\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + ".zip\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(stream);
         } else {
             StreamingResponseBody stream = outputStream -> Files.copy(path, outputStream);
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + path.getFileName() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(sizeCacheFiles.getOrDefault(path, 0L)))
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(stream);
         }
     }
-
-
 }
