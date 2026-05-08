@@ -16,7 +16,7 @@ import java.util.Objects;
 public class Config {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File CONFIG_FILE = new File("./config.json");
+    private static final File CONFIG_FILE = new File("./data/config.json");
 
     @Getter
     private Data data = null;
@@ -52,7 +52,9 @@ public class Config {
 
     @Setter
     public static class Data {
-        private String publicPath = Paths.get("./public").toString();
+        private String publicPath = Paths.get("./data/public").toString();
+        @Getter
+        private String webSite = "http:localhost:3040";
 
         @SuppressWarnings("ResultOfMethodCallIgnored")
         Data(){

@@ -31,12 +31,12 @@ import java.util.zip.ZipOutputStream;
 public class CalistoApplication {
     public static final Config CONFIG = new Config();
     public static final Path ROOT;
-    public static final String WEB = "https://calisto.xbxt.xyz";
+    public static final String WEB;
 
     static {
         CONFIG.loadIsNotExitedOrLoaded();
         ROOT = CONFIG.getData().getPublicPath().toAbsolutePath().normalize();
-        System.out.println("Root path: " + ROOT);
+        WEB = CONFIG.getData().getWebSite();
     }
 
     public static void main(String[] args) {

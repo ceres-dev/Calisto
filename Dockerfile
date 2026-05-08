@@ -4,6 +4,6 @@ WORKDIR /app
 
 COPY target/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 3040
 
-ENTRYPOINT ["java", "-Xms512M", "-Xmx4G", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xms512M", "-Xmx4G", "-jar", "app.jar", "--server.port=3040"]

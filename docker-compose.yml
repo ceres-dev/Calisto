@@ -1,12 +1,14 @@
 services:
   calisto:
-    build: .
-    container_name: calisto
+    image: calisto
+    container_name: calisto:latest
 
     ports:
-      - "8080:8080"
+      - "3040:3040"
+
+    user: "1000:1000" # Para que no sea root
 
     volumes:
-      - ./public:./public
+      - ./data:/app/data
 
     restart: unless-stopped
