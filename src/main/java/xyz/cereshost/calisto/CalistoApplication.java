@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
@@ -110,7 +111,9 @@ public class CalistoApplication {
     private static @NotNull StringBuilder getExplorerList(@NotNull List<File> files, @NotNull Path path) throws IOException {
         StringBuilder builderFiles = new StringBuilder();
         if (!path.equals(ROOT)) builderFiles.append(buildRow(true, path.getParent().toFile()));
-        for (File fil : files.stream().filter(f -> !Utils.isHiddenPath(f.toPath())).toList()) {
+        for (File fil : files.stream().sorted(Comparator.comparing(File::isFile).thenComparing(
+                        file -> file.getName().toLowerCase()
+                )).filter(f -> !Utils.isHiddenPath(f.toPath())).toList()) {
             builderFiles.append(buildRow(false, fil));
         }
         return builderFiles;
