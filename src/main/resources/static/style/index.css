@@ -18,20 +18,21 @@ body > section{
     width: 25vw;
     border-radius: 5px;
     display: block;
+    /*position: absolute;*/
 }
 .gallery{
-    display: grid;
-    grid-gap: 10px;
-    grid-template-columns: 1fr 1fr;
     height: min-content;
+    width: min-content;
+    column-gap: 5px;
+    columns: 2;
 }
 @media (max-width: 1100px) {
     .gallery{
-        grid-template-columns: 1fr;
+        columns: 1;
     }
 }
 .gallery:has(a:only-child) {
-    grid-template-columns: 1fr;
+    columns: 1;
 }
 .gallery:not(:has(*)){
     display: none;
@@ -70,4 +71,23 @@ td > span{
 footer{
     align-items: center;
     display: flex;
+}
+.galleryItem {
+    position: relative;
+}
+.downloadBtn{
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+    top: max(2%, 10px);
+    left: max(2%, 10px);
+    width: 35px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+}
+
+.galleryItem:hover .downloadBtn {
+    opacity: 1;
 }

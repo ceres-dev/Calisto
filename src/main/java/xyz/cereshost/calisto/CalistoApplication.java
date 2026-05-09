@@ -2,6 +2,8 @@ package xyz.cereshost.calisto;
 
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.core.io.Resource;
@@ -15,19 +17,17 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.context.request.async.WebAsyncTask;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.WeakHashMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.Deflater;
 import java.util.zip.ZipOutputStream;
 
@@ -37,6 +37,7 @@ public class CalistoApplication {
     public static final Config CONFIG = new Config();
     public static final Path ROOT;
     public static final String WEB;
+    public static final Logger logger = LoggerFactory.getLogger(CalistoApplication.class);
 
     static {
         CONFIG.loadIsNotExitedOrLoaded();
@@ -77,18 +78,21 @@ public class CalistoApplication {
         File[] files = file.listFiles();
         if (files == null) return builderPath;
         List<Path> dirs = Arrays.stream(files).map(File::toPath).filter(Utils::isMedia).toList();
-        String html = "<a href=\"%s\">%s</a>";
+        String html = "<div class=\"galleryItem\"> <a href=\"%s\">%s</a>%s</div>";
 
-        String img = "<img loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview src=\"%s\">";
-        String video = "<video loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%s\"></video>";
-        String audio = "<audio loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%s\"></audio>";
+        String img = "<img loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview src=\"%1$s\">";
+        String video = "<video loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%1$s\"></video>";
+        String audio = "<audio loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%1$s\"></audio>";
 
         for (Path dir : dirs) {
             String url = "/view?path=" + pathToName(dir);
+            String download =
+                    "<a href=\"/download?path=%s\"><img class=\"icon iconDownload downloadBtn\" src=\"icons/download.svg\" alt=descargar></a>"
+                            .formatted(pathToName(dir));
             builderPath.append(switch (Utils.getTypeMedia(dir)){
-                case IMAGE -> html.formatted(url, img.formatted(url, dir.toFile().getName()));
-                case VIDEO -> html.formatted(url, video.formatted(url, dir.toFile().getName()));
-                case AUDIO -> html.formatted(url, audio.formatted(url, dir.toFile().getName()));
+                case IMAGE -> html.formatted(url, img.formatted(url, dir.toFile().getName()), download);
+                case VIDEO -> html.formatted(url, video.formatted(url, dir.toFile().getName()), download);
+                case AUDIO -> html.formatted(url, audio.formatted(url, dir.toFile().getName()), download);
             });
         }
         return builderPath;
@@ -183,24 +187,41 @@ public class CalistoApplication {
         }
     }
 
+    private final DecimalFormat df = new DecimalFormat("###,###,##0.00s");
+
     @ResponseBody
     @GetMapping("/download")
     public ResponseEntity<StreamingResponseBody> download(@RequestParam(value = "path", defaultValue = "/") String pathName) {
         Path path = nametoPath(pathName).toAbsolutePath().normalize();
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        logger.info("Downloading: {}", pathName);
+        long time = System.currentTimeMillis();
         if (Files.isDirectory(path)) {
             StreamingResponseBody stream = outputStream -> {
                 try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
                     zipOut.setLevel(Deflater.DEFAULT_COMPRESSION);
                     Utils.zipFolder(path, path.getFileName().toString(), zipOut);
+                    logger.info("Download Zip Complete: {} {}", pathName, df.format((System.currentTimeMillis() - time) / 1000f));
+                }catch (IOException e) {
+                    logger.info("Download Zip Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
                 }
+
             };
+
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + ".zip\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(stream);
         } else {
-            StreamingResponseBody stream = outputStream -> Files.copy(path, outputStream);
+            StreamingResponseBody stream = outputStream -> {
+                try{
+                    Files.copy(path, outputStream);
+                }catch (IOException e) {
+                    logger.info("Download File Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
+                }
+                logger.info("Download File Complete: {} {}", pathName,df.format((System.currentTimeMillis() - time) / 1000f));
+            };
+
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(sizeCacheFiles.getOrDefault(path, 0L)))

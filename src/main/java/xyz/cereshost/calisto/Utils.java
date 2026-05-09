@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static xyz.cereshost.calisto.CalistoApplication.logger;
+
 @UtilityClass
 public class Utils {
     public void zipFolder(Path folder, String parentName, ZipOutputStream zipOut) throws IOException {
@@ -70,7 +72,7 @@ public class Utils {
     }
 
     private final Set<String> IMAGE_EXTENSIVE = Set.of(
-            "png", "jpg", "jpeg", "gif", "bmp", "svg"
+            "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp"
     );
 
     private final Set<String> VIDEO_EXTENSIVE = Set.of(
@@ -114,7 +116,12 @@ public class Utils {
     }
 
     public boolean checkPathForbidden(Path path) {
-        return !path.startsWith(CalistoApplication.ROOT);
+        if (path.startsWith(CalistoApplication.ROOT)){
+            return false;
+        }else {
+            logger.warn("Acceso negado: {}", path);
+            return true;
+        }
     }
 
     public static boolean isVisible(Path path) throws IOException {
