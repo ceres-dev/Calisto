@@ -1,4 +1,4 @@
-package xyz.cereshost.calisto;
+package dev.cerez.calisto;
 
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;

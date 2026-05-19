@@ -1,4 +1,4 @@
-package xyz.cereshost.calisto;
+package dev.cerez.calisto;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;

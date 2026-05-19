@@ -1,4 +1,4 @@
-package xyz.cereshost.calisto;
+package dev.cerez.calisto;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

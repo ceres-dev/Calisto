@@ -1,4 +1,4 @@
-package xyz.cereshost.calisto;
+package dev.cerez.calisto;
 
 import com.luciad.imageio.webp.WebPWriteParam;
 import lombok.experimental.UtilityClass;

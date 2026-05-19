@@ -1,4 +1,4 @@
-package xyz.cereshost.calisto;
+package dev.cerez.calisto;
 
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static xyz.cereshost.calisto.CalistoApplication.logger;
+import static dev.cerez.calisto.CalistoApplication.logger;
 
 @UtilityClass
 public class Utils {
