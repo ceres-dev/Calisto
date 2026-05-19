@@ -31,7 +31,7 @@ body > section{
         columns: 1;
     }
 }
-.gallery:has(a:only-child) {
+.gallery:has(div:only-child) {
     columns: 1;
 }
 .gallery:not(:has(*)){

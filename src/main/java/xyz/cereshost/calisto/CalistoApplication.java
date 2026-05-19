@@ -1,7 +1,6 @@
 package xyz.cereshost.calisto;
 
 import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -25,9 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.WeakHashMap;
 import java.util.zip.Deflater;
 import java.util.zip.ZipOutputStream;
 
@@ -58,107 +54,15 @@ public class CalistoApplication {
         if (file.isDirectory()) {
             File[] files = file.listFiles();
             if (files == null) return "error/400";
-            StringBuilder builderFiles = getExplorerList(Arrays.asList(files), path);
+            StringBuilder builderFiles = SectionBuilder.getExplorerList(Arrays.asList(files), path);
             model.addAttribute("files", builderFiles.toString());
-            StringBuilder builderPath = getExplorerPath(path);
+            StringBuilder builderPath = SectionBuilder.getExplorerPath(path);
             model.addAttribute("path", builderPath.toString());
-            StringBuilder builderGalley = getExplorerGallery(path);
+            StringBuilder builderGalley = SectionBuilder.getExplorerGallery(path);
             model.addAttribute("gallery", builderGalley.toString());
             return "index";
         }else {
             return "error/404";
-        }
-    }
-
-    private static StringBuilder getExplorerGallery(Path path) {
-        StringBuilder builderPath = new StringBuilder();
-        File file = path.toFile();
-        if (!file.exists() || !file.isDirectory()) return builderPath;
-
-        File[] files = file.listFiles();
-        if (files == null) return builderPath;
-        List<Path> dirs = Arrays.stream(files).map(File::toPath).filter(Utils::isMedia).toList();
-        String html = "<div class=\"galleryItem\"> <a href=\"%s\">%s</a>%s</div>";
-
-        String img = "<img loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview src=\"%1$s\">";
-        String video = "<video loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%1$s\"></video>";
-        String audio = "<audio loading=\"lazy\" alt=\"%1$s\" title=\"%2$s\" class=mediaPreview controls><source src=\"%1$s\"></audio>";
-
-        for (Path dir : dirs) {
-            String url = "/view?path=" + pathToName(dir);
-            String download =
-                    "<a href=\"/download?path=%s\"><img class=\"icon iconDownload downloadBtn\" src=\"icons/download.svg\" alt=descargar></a>"
-                            .formatted(pathToName(dir));
-            builderPath.append(switch (Utils.getTypeMedia(dir)){
-                case IMAGE -> html.formatted(url, img.formatted(url, dir.toFile().getName()), download);
-                case VIDEO -> html.formatted(url, video.formatted(url, dir.toFile().getName()), download);
-                case AUDIO -> html.formatted(url, audio.formatted(url, dir.toFile().getName()), download);
-            });
-        }
-        return builderPath;
-    }
-
-    private static @NonNull StringBuilder getExplorerPath(Path path) {
-        StringBuilder builderPath = new StringBuilder();
-        List<String> dirNames = Arrays.stream(pathToName(path).split("/")).toList();
-        builderPath.append("<a href=\"").append("?path=/\">.</a>/");
-        if (!dirNames.isEmpty()) {
-            for (int i = 1; i < dirNames.size(); i++) {
-                builderPath.append("<a href=\"").append("?path=")
-                        .append(String.join("/", dirNames.subList(0, i +1)))
-                        .append("\">").append(dirNames.get(i)).append("</a>").append("/");
-            }
-        }
-        return builderPath;
-    }
-
-    private static @NotNull StringBuilder getExplorerList(@NotNull List<File> files, @NotNull Path path) throws IOException {
-        StringBuilder builderFiles = new StringBuilder();
-        if (!path.equals(ROOT)) builderFiles.append(buildRow(true, path.getParent().toFile()));
-        for (File fil : files.stream().sorted(Comparator.comparing(File::isFile).thenComparing(
-                        file -> file.getName().toLowerCase()
-                )).filter(f -> !Utils.isHiddenPath(f.toPath())).toList()) {
-            builderFiles.append(buildRow(false, fil));
-        }
-        return builderFiles;
-    }
-
-    private static final WeakHashMap<Path, Long> sizeCacheFiles = new WeakHashMap<>(32, 0.5f);
-
-    private static @NotNull String buildRow(boolean isParent, File file) throws IOException {
-        final String row = "<tr><td>%s</td><td>%s</td><td>%s</td><td><small>%s</small></td></tr>";
-        String pathName = pathToName(file.toPath());
-        String displayName = isParent ? ".." : file.getName();
-        String name;
-
-        if (file.isDirectory()) {
-            name = "<a href=\"?path=%s\"><span>%s</span></a>"
-                    .formatted(pathName, displayName);
-        } else {
-            if (Utils.isVisible(file.toPath())) {
-                name = "<a href=\"/view?path=%s\"><span>%s</span></a>"
-                        .formatted(pathName, displayName);
-
-            }else {
-                name = "<span>%s</span>"
-                        .formatted(displayName);
-            }
-
-        }
-        String type = "<img class=icon src=\"icons/%1$s.svg\" alt=\"%s\">".formatted(file.isDirectory() ? "folder" : "file");
-        String download = "<a href=\"/download?path=%s\"</a><img class=\"icon iconDownload\" src=\"icons/download.svg\" alt=descargar>".formatted(pathName);
-        String size = "<span>%s</span>".formatted(Utils.formatSize(sizeCacheFiles.computeIfAbsent(file.toPath().normalize().toAbsolutePath(), (f) -> Utils.getFolderSize(f.toFile()))));
-
-        return row.formatted(download, type, name, size);
-    }
-
-    private static @NotNull String pathToName(@NotNull Path path) {
-        String name = (path.startsWith(".") ? path.toString().substring(1) : path).toString()
-                .replace(ROOT.toString(), "").replace("\\", "/");
-        if (name.isEmpty()) {
-            return "/";
-        } else {
-            return name;
         }
     }
 
@@ -168,9 +72,24 @@ public class CalistoApplication {
 
     @ResponseBody
     @GetMapping("/view")
-    public ResponseEntity<Resource> view(@RequestParam(value = "path", defaultValue = "/") String pathName) throws IOException {
+    public ResponseEntity<Resource> view(
+            @RequestParam(value = "path", defaultValue = "/") String pathName,
+            @RequestParam(value = "quality", defaultValue = "ORIGINAL") String qualityName,
+            @RequestParam(value = "resolution", defaultValue = "ORIGINAL") String resolutionName
+    ) throws IOException {
+        Quality quality;
+        Resolution resolution;
+        try {
+            resolution = WebpBuilder.parseResolution(resolutionName);
+            quality = Quality.valueOf(qualityName.toUpperCase());
+        }catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
         Path path = nametoPath(pathName).toAbsolutePath().normalize();
+
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (!Utils.isVisible(nametoPath(pathName))) return ResponseEntity.badRequest().build();
 
         Resource resource = new UrlResource(path.toUri());
         if (!resource.exists()) {
@@ -181,6 +100,12 @@ public class CalistoApplication {
         if (contentType == null) {
             return ResponseEntity.notFound().build();
         }else {
+            if (WebpBuilder.shouldTransformToWebp(contentType, quality, resolution)) {
+                ResponseEntity<Resource> transformed = WebpBuilder.buildWebpResponse(path, quality, resolution);
+                if (transformed != null) {
+                    return transformed;
+                }
+            }
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .body(resource);
@@ -192,9 +117,9 @@ public class CalistoApplication {
     @ResponseBody
     @GetMapping("/download")
     public ResponseEntity<StreamingResponseBody> download(@RequestParam(value = "path", defaultValue = "/") String pathName) {
-        Path path = nametoPath(pathName).toAbsolutePath().normalize();
+        Path path = nametoPath(pathName).normalize().toAbsolutePath();
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        logger.info("Downloading: {}", pathName);
+        logger.info("Downloading: {}", path);
         long time = System.currentTimeMillis();
         if (Files.isDirectory(path)) {
             StreamingResponseBody stream = outputStream -> {
@@ -224,7 +149,10 @@ public class CalistoApplication {
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + path.getFileName() + "\"")
-                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(sizeCacheFiles.getOrDefault(path, 0L)))
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(
+                            SectionBuilder.sizeCacheFiles.computeIfAbsent(path.normalize().toAbsolutePath(), (f) ->
+                                    Utils.getFolderSize(f.toFile())))
+                    )
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(stream);
         }
