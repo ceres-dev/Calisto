@@ -22,6 +22,10 @@ public class Utils {
 
                 String entryName = parentName + "/" + path.getFileName();
 
+                if (path.getFileName().toString().startsWith(".")) {
+                    continue;
+                }
+
                 if (Files.isDirectory(path)) {
                     zipFolder(path, entryName, zipOut);
                 } else {
