@@ -18,27 +18,45 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipOutputStream;
 
 @Controller
 @SpringBootApplication
 public class CalistoApplication {
+
     public static final Config CONFIG = new Config();
     public static final Path ROOT;
+    public static final Path ROOT_CACHE;
     public static final String WEB;
     public static final Logger logger = LoggerFactory.getLogger(CalistoApplication.class);
+    public static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
 
     static {
         CONFIG.loadIsNotExitedOrLoaded();
         ROOT = CONFIG.getData().getPublicPath().toAbsolutePath().normalize();
+        ROOT_CACHE = Path.of(CONFIG.getData().getPublicPath().toString() + "_cache").toAbsolutePath().normalize();
         WEB = CONFIG.getData().getWebSite();
+        File root = ROOT.toFile();
+        if (!root.exists()){
+            //noinspection ResultOfMethodCallIgnored
+            root.mkdirs();
+        }
+        File rootCache = ROOT_CACHE.toFile();
+        if (!rootCache.exists()){
+            //noinspection ResultOfMethodCallIgnored
+            rootCache.mkdirs();
+        }
     }
 
     public static void main(String[] args) {
@@ -47,7 +65,7 @@ public class CalistoApplication {
 
     @GetMapping("/")
     public String index(@RequestParam(value = "path", defaultValue = "/") String name, Model model) throws IOException {
-        Path path = nametoPath(name);
+        Path path = nameToPath(name);
         if (Utils.checkPathForbidden(path)) return "error/403";
         File file = path.toFile();
 
@@ -66,8 +84,32 @@ public class CalistoApplication {
         }
     }
 
-    private static @NotNull Path nametoPath(@NotNull String name) {
+    private static @NotNull Path nameToPath(@NotNull String name) {
         return ROOT.resolve(ROOT + name).normalize();
+    }
+
+    private static @NotNull Path nameToPathCache(@NotNull String name) {
+        return ROOT_CACHE.resolve(ROOT_CACHE + name).normalize();
+    }
+
+    private static @NotNull String nameFileToNameFileCache(@NotNull String name, @NotNull Quality quality, Resolution resolution) {
+        String[] split = name.split("/");
+        String nameFile =  split[split.length - 1];
+        return name + "/" + quality.name() + "_" + resolution + "_" + nameFile;
+    }
+
+    private static @NotNull String nameFileCacheToNameFile(@NotNull String name) {
+        String[] split = name.split("_");
+
+        if  (split.length > 2) {
+            try {
+                Quality quality = Quality.valueOf(split[1]);
+                Resolution resolution = Resolution.valueOf(split[2]);
+                String formattedName = nameFileToNameFileCache("", quality, resolution);
+                return name.replaceFirst(formattedName, "");
+            }catch (Exception ignored) {}
+        }
+        return name;
     }
 
     @ResponseBody
@@ -80,18 +122,48 @@ public class CalistoApplication {
         Quality quality;
         Resolution resolution;
         try {
-            resolution = WebpBuilder.parseResolution(resolutionName);
+            resolution = WebpBuilder.parseResolution(resolutionName.toUpperCase());
             quality = Quality.valueOf(qualityName.toUpperCase());
         }catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
 
-        Path path = nametoPath(pathName).toAbsolutePath().normalize();
+
+        Path path = nameToPath(pathName).toAbsolutePath().normalize();
 
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        if (!Utils.isVisible(nametoPath(pathName))) return ResponseEntity.badRequest().build();
+        if (!Utils.isVisible(nameToPath(pathName))) return ResponseEntity.badRequest().build();
 
-        Resource resource = new UrlResource(path.toUri());
+        if (!path.toFile().exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource;
+        if (quality != Quality.ORIGINAL ||  resolution != Resolution.ORIGINAL) {
+            Path pathCache = nameToPathCache(nameFileToNameFileCache(pathName, quality, resolution));
+            Resource resourceCache = new UrlResource(pathCache.toUri());
+            if (resourceCache.exists()) {
+                resource = resourceCache;
+            }else {
+                BufferedImage source = ImageIO.read(path.toFile());
+                if  (source != null) {
+                    resource = WebpBuilder.buildWebpResource(path, quality, resolution);
+                    EXECUTOR.submit(() -> {
+                        try {
+                            pathCache.getParent().toFile().mkdirs();
+                            Files.write(pathCache, resource.getContentAsByteArray());
+                        } catch (IOException e) {
+                            logger.info("Error al guarda la imagen: {}", path.toAbsolutePath(), e);
+                        }
+                    });
+                }else {
+                    resource = new UrlResource(path.toUri());
+                }
+            }
+        }else {
+            resource = new UrlResource(path.toUri());
+        }
+
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
         }
@@ -100,12 +172,6 @@ public class CalistoApplication {
         if (contentType == null) {
             return ResponseEntity.notFound().build();
         }else {
-            if (WebpBuilder.shouldTransformToWebp(contentType, quality, resolution)) {
-                ResponseEntity<Resource> transformed = WebpBuilder.buildWebpResponse(path, quality, resolution);
-                if (transformed != null) {
-                    return transformed;
-                }
-            }
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .body(resource);
@@ -117,7 +183,7 @@ public class CalistoApplication {
     @ResponseBody
     @GetMapping("/download")
     public ResponseEntity<StreamingResponseBody> download(@RequestParam(value = "path", defaultValue = "/") String pathName) {
-        Path path = nametoPath(pathName).normalize().toAbsolutePath();
+        Path path = nameToPath(pathName).normalize().toAbsolutePath();
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         logger.info("Downloading: {}", path);
         long time = System.currentTimeMillis();

@@ -2,10 +2,9 @@ package dev.cerez.calisto;
 
 import com.luciad.imageio.webp.WebPWriteParam;
 import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -36,17 +35,15 @@ public class WebpBuilder {
         return Resolution.valueOf(normalized);
     }
 
-    public static ResponseEntity<Resource> buildWebpResponse(Path path, Quality quality, Resolution resolution) throws IOException {
+    public static @NotNull Resource buildWebpResource(Path path, Quality quality, Resolution resolution) throws IOException {
         BufferedImage source = ImageIO.read(path.toFile());
         if (source == null) {
-            return null;
+            throw new IOException("Failed to read image from: " + path);
         }
 
         BufferedImage imageForWrite = resizeByResolutionIfNeeded(source, resolution);
         byte[] data = encodeWebp(imageForWrite, quality.getQuality());
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("image/webp"))
-                .body(new ByteArrayResource(data));
+        return new ByteArrayResource(data);
     }
 
     private static BufferedImage resizeByResolutionIfNeeded(BufferedImage source, Resolution resolution) {
