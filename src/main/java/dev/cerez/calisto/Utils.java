@@ -2,6 +2,8 @@ package dev.cerez.calisto;
 
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,10 +14,13 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static dev.cerez.calisto.CalistoApplication.logger;
+import static dev.cerez.calisto.CalistoApplication.*;
 
 @UtilityClass
 public class Utils {
+
+    private static final Logger logger = LoggerFactory.getLogger(Utils.class);
+
     public void zipFolder(Path folder, String parentName, ZipOutputStream zipOut) throws IOException {
         try (Stream<Path> paths = Files.list(folder)) {
             for (Path path : paths.toList()) {
@@ -120,7 +125,7 @@ public class Utils {
     }
 
     public boolean checkPathForbidden(Path path) {
-        if (path.startsWith(CalistoApplication.ROOT)){
+        if (path.startsWith(ROOT)){
             return false;
         }else {
             logger.warn("Acceso negado: {}", path);
@@ -128,11 +133,39 @@ public class Utils {
         }
     }
 
-    public static boolean isVisible(Path path) throws IOException {
+    public boolean isVisible(Path path) throws IOException {
         return Files.probeContentType(path) != null;
     }
 
-    public static boolean isHiddenPath(Path path) {
+    public boolean isHiddenPath(Path path) {
         return path.getFileName().toString().toLowerCase().startsWith(".");
+    }
+
+    public @NotNull Path nameToPath(@NotNull String name) {
+        return ROOT.resolve(ROOT + name).normalize();
+    }
+
+    public @NotNull Path nameToPathCache(@NotNull String name) {
+        return ROOT_CACHE.resolve(ROOT_CACHE + name).normalize();
+    }
+
+    public @NotNull String nameFileToNameFileCache(@NotNull String name, @NotNull Quality quality, Resolution resolution) {
+        String[] split = name.split("/");
+        String nameFile =  split[split.length - 1];
+        return name + "/" + quality.name() + "_" + resolution + "_" + nameFile;
+    }
+
+    public @NotNull String nameFileCacheToNameFile(@NotNull String name) {
+        String[] split = name.split("_");
+
+        if  (split.length > 2) {
+            try {
+                Quality quality = Quality.valueOf(split[1]);
+                Resolution resolution = Resolution.valueOf(split[2]);
+                String formattedName = nameFileToNameFileCache("", quality, resolution);
+                return name.replaceFirst(formattedName, "");
+            }catch (Exception ignored) {}
+        }
+        return name;
     }
 }
