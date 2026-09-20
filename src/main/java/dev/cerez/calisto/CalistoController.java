@@ -1,5 +1,6 @@
 package dev.cerez.calisto;
 
+import com.sun.tools.javac.Main;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -29,7 +30,6 @@ import java.util.zip.ZipOutputStream;
 @Controller
 public class CalistoController {
 
-    private static final Logger logger = LoggerFactory.getLogger(CalistoController.class);
 
     private final DecimalFormat df = new DecimalFormat("###,###,##0.00s");
 
@@ -95,7 +95,7 @@ public class CalistoController {
                             pathCache.getParent().toFile().mkdirs();
                             Files.write(pathCache, resource.getContentAsByteArray());
                         } catch (IOException e) {
-                            logger.info("Error al guarda la imagen: {}", path.toAbsolutePath(), e);
+                            CalistoApplication.LOGGER.info("Error al guarda la imagen: {}", path.toAbsolutePath(), e);
                         }
                     });
                 }else {
@@ -126,16 +126,16 @@ public class CalistoController {
     public ResponseEntity<StreamingResponseBody> download(@RequestParam(value = "path", defaultValue = "/") String pathName) {
         Path path = Utils.nameToPath(pathName).normalize().toAbsolutePath();
         if (Utils.checkPathForbidden(path)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        logger.info("Downloading: {}", path);
+        CalistoApplication.LOGGER.info("Downloading: {}", path);
         long time = System.currentTimeMillis();
         if (Files.isDirectory(path)) {
             StreamingResponseBody stream = outputStream -> {
                 try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
                     zipOut.setLevel(Deflater.DEFAULT_COMPRESSION);
                     Utils.zipFolder(path, path.getFileName().toString(), zipOut);
-                    logger.info("Download Zip Complete: {} {}", pathName, df.format((System.currentTimeMillis() - time) / 1000f));
+                    CalistoApplication.LOGGER.info("Download Zip Complete: {} {}", pathName, df.format((System.currentTimeMillis() - time) / 1000f));
                 }catch (IOException e) {
-                    logger.info("Download Zip Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
+                    CalistoApplication.LOGGER.info("Download Zip Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
                 }
 
             };
@@ -149,9 +149,9 @@ public class CalistoController {
                 try{
                     Files.copy(path, outputStream);
                 }catch (IOException e) {
-                    logger.info("Download File Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
+                    CalistoApplication.LOGGER.info("Download File Cancel ({}): {} {}", e.getMessage(), pathName, df.format((System.currentTimeMillis() - time) / 1000f));
                 }
-                logger.info("Download File Complete: {} {}", pathName,df.format((System.currentTimeMillis() - time) / 1000f));
+                CalistoApplication.LOGGER.info("Download File Complete: {} {}", pathName,df.format((System.currentTimeMillis() - time) / 1000f));
             };
 
             return ResponseEntity.ok()

@@ -20,6 +20,7 @@ public class CalistoApplication {
     public static final Path ROOT_CACHE;
     public static final String WEB;
     public static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
+    public static final Logger LOGGER = LoggerFactory.getLogger("Calisto");
 
     static {
         CONFIG.loadIsNotExitedOrLoaded();
