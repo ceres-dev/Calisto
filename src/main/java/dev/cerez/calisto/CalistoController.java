@@ -1,8 +1,5 @@
 package dev.cerez.calisto;
 
-import com.sun.tools.javac.Main;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;

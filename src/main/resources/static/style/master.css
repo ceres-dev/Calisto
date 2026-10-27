@@ -20,3 +20,15 @@ small{
 footer{
     margin-top: 10px;
 }
+@media (prefers-color-scheme: light) {
+    body {
+        background: #ffffff;
+    }
+    header, section {
+        background: #9b9b9b;
+        color: #000000;
+    }
+    small{
+        color: #000000
+    }
+}

@@ -58,11 +58,11 @@ a:hover {
 td > a{
     width: 100%;
 }
-header > a{
-    text-decoration: none;
-}
 td > span{
     color: #989898;
+}
+header > a{
+    text-decoration: none;
 }
 .git{
     vertical-align: middle;
@@ -90,4 +90,15 @@ footer{
 
 .galleryItem:hover .downloadBtn {
     opacity: 1;
+}
+@media (prefers-color-scheme: light) {
+    a {
+        color: #171717;
+    }
+    a:visited {
+        color: #171717;
+    }
+    a:hover {
+        color: #3f3f3f;
+    }
 }
